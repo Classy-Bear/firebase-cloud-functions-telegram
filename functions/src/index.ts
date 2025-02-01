@@ -100,3 +100,49 @@ export const onReceivedMessage: functions.https.HttpsFunction = functions.https.
     res.status(500).send('Failed to handle message.');
   }
 });
+
+/**
+ * HTTP endpoint to send files to Telegram users
+ * 
+ * @function sendFile
+ * @type {functions.https.HttpsFunction}
+ * 
+ * @param {functions.Request} req - The HTTP request object
+ * @param {string} req.query.chatId - The Telegram chat ID to send the file to
+ * @param {string} req.query.fileUrl - The URL of the file to send
+ * @param {functions.Response} res - The HTTP response object
+ * 
+ * @example
+ * // Send a file
+ * GET /sendFile?chatId=123456789&fileUrl=https://example.com/file.pdf
+ * 
+ * @returns {Promise<void>} Resolves when the file is sent
+ * @throws {Error} If the file fails to send
+ */
+export const sendFile = functions.https.onRequest(async (req, res) => {
+  const chatId = req.query.chatId as string | undefined;
+  const fileUrl = req.query.fileUrl as string | undefined;
+  
+  if (!chatId) {
+    res.status(400).send('No chatId provided.');
+    return;
+  }
+
+  if (!fileUrl) {
+    res.status(400).send('No fileUrl provided.');
+    return;
+  }
+
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.body}, ${response.status}`);
+    }
+    const buffer = await response.arrayBuffer();
+    await bot.telegram.sendDocument(chatId, { source: Buffer.from(buffer), filename: 'index.js' });
+    res.status(200).send('File sent successfully.');
+  } catch (error) {
+    console.error('Error sending file:', error);
+    res.status(500).send('Failed to send file.');
+  }
+});

@@ -16,7 +16,8 @@ A Node.js project utilizing Firebase Functions and the Telegraf library to creat
 - [Usage](#usage)
   - [1. Setting Up the Telegram Webhook](#1-setting-up-the-telegram-webhook)
   - [2. Sending Notifications](#2-sending-notifications)
-  - [3. Receiving and Echoing Messages](#3-receiving-and-echoing-messages)
+  - [3. Sending Files](#3-sending-files)
+  - [4. Receiving and Echoing Messages](#4-receiving-and-echoing-messages)
 - [Testing the Webhook](#testing-the-webhook)
   - [Using Firebase HTTPS Endpoint](#using-firebase-https-endpoint)
   - [Using Tunneling Services (ngrok)](#using-tunneling-services-ngrok)
@@ -30,6 +31,7 @@ A Node.js project utilizing Firebase Functions and the Telegraf library to creat
 ## Features
 
 - **sendNotification**: Sends a "You received a notification" message to a specified Telegram user.
+- **sendFile**: Sends a file to a specified Telegram user using a URL.
 - **onReceivedMessage**: Listens for incoming messages from users and echoes back the same message.
 
 ## Prerequisites
@@ -42,6 +44,48 @@ Before setting up the project, ensure you have the following installed:
   npm install -g firebase-tools
   ```
 - **ngrok** (optional): For local testing of webhooks. [Download ngrok](https://ngrok.com/download)
+- **Telegram Bot Token**: Obtain this from [@BotFather](https://t.me/botfather) on Telegram
+
+### Getting Your Chat ID
+
+To use the notification features, you'll need your chat ID. Here's how to get it:
+
+1. **Start a conversation** with your bot on Telegram
+2. **Send any message** to your bot
+3. **Visit this URL** in your browser (replace `<BOT_TOKEN>` with your actual bot token):
+   ```
+   https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
+   ```
+4. **Look for the `chat` object** in the response. You'll see something like this:
+   ```json
+   {
+     "ok": true,
+     "result": [{
+       "update_id": 123456789,
+       "message": {
+         "message_id": 1,
+         "from": {
+           "id": 123456789,
+           "first_name": "John",
+           "username": "john_doe"
+         },
+         "chat": {
+           "id": 123456789,  // This is your chat ID
+           "first_name": "John",
+           "username": "john_doe",
+           "type": "private"
+         },
+         "date": 1677721501,
+         "text": "Hello"
+       }
+     }]
+   }
+   ```
+
+**Note:** 
+- If you don't see any updates, send another message to your bot and refresh the URL
+- The `chat.id` value is what you'll use as the `chatId` parameter in API calls
+- This ID is unique for each chat/user with your bot
 
 ## Project Structure
 
@@ -180,8 +224,33 @@ curl https://us-central1-your-project.cloudfunctions.net/sendNotification?chatId
 curl "https://us-central1-your-project.cloudfunctions.net/sendNotification?chatId=123456789"
 ```
 
+### 3. Sending Files
 
-### 3. Receiving and Echoing Messages
+To send a file to a user, make an HTTP GET request to the `sendFile` function with the `chatId` and `fileUrl` as query parameters.
+
+**Example Request:**
+
+```bash
+curl https://us-central1-your-project.cloudfunctions.net/sendFile?chatId=<USER_CHAT_ID>&fileUrl=<FILE_URL>
+```
+
+**Parameters:**
+
+- `chatId`: The unique identifier for the target chat or username of the target channel
+- `fileUrl`: A publicly accessible URL of the file you want to send
+
+**Example using curl:**
+
+```bash
+curl "https://us-central1-your-project.cloudfunctions.net/sendFile?chatId=123456789&fileUrl=https://example.com/file.pdf"
+```
+
+**Note:** 
+- The file URL must be publicly accessible for the function to fetch and send it to Telegram
+- The function will download the file and send it as a document to the specified chat
+- If the file download fails, you'll receive an appropriate error message
+
+### 4. Receiving and Echoing Messages
 
 When a user sends a message to your Telegram bot, the `onReceivedMessage` function is triggered. The bot responds by echoing back the received message.
 
